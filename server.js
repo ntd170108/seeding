@@ -5,7 +5,7 @@ const cron = require("node-cron");
 
 const app = express();
 app.use(bodyParser.json());
-
+app.use(bodyParser.urlencoded({ extended: true }));
 const db = new sqlite3.Database("./data.db");
 
 db.run(`CREATE TABLE IF NOT EXISTS posts (
@@ -15,7 +15,8 @@ db.run(`CREATE TABLE IF NOT EXISTS posts (
 )`);
 
 app.post("/post", (req, res) => {
-  const { content, time } = req.body;
+  const content = req.body.content;
+  const time = req.body.time;
   db.run("INSERT INTO posts (content, time) VALUES (?, ?)", [content, time]);
   res.send("Đã lưu");
 });
@@ -28,5 +29,14 @@ cron.schedule("* * * * *", () => {
     });
   });
 });
-
+app.get("/", (req, res) => {
+  res.send(`
+    <h2>Seeding Tool</h2>
+    <form method="POST" action="/post">
+      <input name="content" placeholder="Nội dung" /><br><br>
+      <input name="time" type="datetime-local" /><br><br>
+      <button type="submit">Đăng</button>
+    </form>
+  `);
+});
 app.listen(3000, () => console.log("Server chạy"));
