@@ -30,6 +30,23 @@ cron.schedule("* * * * *", () => {
   });
 });
 app.get("/", (req, res) => {
+  db.all("SELECT * FROM posts", [], (err, rows) => {
+    let list = rows.map(p => `<li>${p.content} - ${p.time}</li>`).join("");
+
+    res.send(`
+      <h2>Seeding Tool</h2>
+
+      <form method="POST" action="/post">
+        <input name="content" placeholder="Nội dung" /><br><br>
+        <input name="time" type="datetime-local" /><br><br>
+        <button type="submit">Đăng</button>
+      </form>
+
+      <h3>Bài đã lên lịch:</h3>
+      <ul>${list}</ul>
+    `);
+  });
+});
   res.send(`
     <h2>Seeding Tool</h2>
     <form method="POST" action="/post">
