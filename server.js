@@ -31,7 +31,14 @@ cron.schedule("* * * * *", () => {
 });
 app.get("/", (req, res) => {
   db.all("SELECT * FROM posts", [], (err, rows) => {
-    let list = rows.map(p => `<li>${p.content} - ${p.time}</li>`).join("");
+    if (err) {
+      return res.send("Lỗi database");
+    }
+
+    let list = "";
+    if (rows && rows.length > 0) {
+      list = rows.map(p => `<li>${p.content} - ${p.time}</li>`).join("");
+    }
 
     res.send(`
       <h2>Seeding Tool</h2>
@@ -44,6 +51,9 @@ app.get("/", (req, res) => {
 
       <h3>Bài đã lên lịch:</h3>
       <ul>${list}</ul>
+    `);
+  });
+});
     `);
   });
 });
