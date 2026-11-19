@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chấm công & Nhắn tin</title>
+<style>
+  :root {
+    --bg: #f2f5f3; --card: #ffffff; --ink: #14201c; --muted: #5b6b65;
+    --line: #d6ded9; --accent: #1f5c4a; --accent-ink: #ffffff; --danger: #b3261e; --ok: #1f5c4a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1613; --card: #18211d; --ink: #e8efeb; --muted: #93a39b;
+      --line: #2b3832; --accent: #4fb08f; --accent-ink: #06130e; --danger: #ff8a80; --ok: #4fb08f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.05rem; margin: 0 0 12px; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-top: 16px; }
+  label { display: block; font-size: .9rem; margin: 12px 0 4px; }
+  input, select { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button { font: inherit; font-weight: 600; width: 100%; margin-top: 12px; padding: 13px;
+    background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); width: auto; padding: 8px 14px; margin-top: 0; }
+  button.plain { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button:disabled { opacity: .55; cursor: wait; }
+  .msg { margin-top: 12px; font-size: .92rem; min-height: 1.3em; }
+  .msg.err { color: var(--danger); } .msg.ok { color: var(--ok); }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .role { display: inline-block; font-size: .8rem; padding: 2px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  li .r { text-align: right; color: var(--muted); font-size: .9rem; white-space: nowrap; }
+  .status { font-size: 1.05rem; font-weight: 600; }
+  #reader { width: 100%; margin-top: 12px; border-radius: 8px; overflow: hidden; }
+  #qrBox { background: #fff; padding: 14px; border-radius: 12px; margin-top: 12px; }
+  #qrBox svg { width: 100%; height: auto; display: block; }
+  .count { text-align: center; margin-top: 8px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+
+  <!-- Đăng nhập -->
+  <section id="loginView" hidden>
+    <h1>Đăng nhập</h1>
+    <p class="muted">Tài khoản do admin cấp. Liên hệ admin nếu bạn chưa có.</p>
+    <form id="loginForm" class="card" autocomplete="on">
+      <label for="loginUser">Tên đăng nhập hoặc email</label>
+      <input id="loginUser" type="text" autocomplete="username" autocapitalize="none" required>
+      <label for="loginPass">Mật khẩu</label>
+      <input id="loginPass" type="password" autocomplete="current-password" required>
+      <button id="loginBtn" type="submit">Đăng nhập</button>
+      <div id="loginMsg" class="msg" role="alert"></div>
+    </form>
+  </section>
+
+  <!-- Trang chính -->
+  <section id="homeView" hidden>
+    <div class="top">
+      <div>
+        <h1 id="hello">Xin chào</h1>
+        <span id="roleTag" class="role"></span>
+      </div>
+      <button id="logoutBtn" class="ghost" type="button">Đăng xuất</button>
+    </div>
+
+    <!-- Chấm công: ai cũng thấy -->
+    <div class="card">
+      <h2>Chấm công</h2>
+      <div id="todayStatus" class="status">Đang tải...</div>
+      <button id="scanBtn" type="button">Quét mã chấm công</button>
+      <div id="scanArea" hidden>
+        <div id="reader"></div>
+        <button id="cancelScan" class="plain" type="button">Huỷ</button>
+      </div>
+      <div id="punchMsg" class="msg" role="alert"></div>
+    </div>
+
+    <!-- Giờ làm -->
+    <div class="card">
+      <h2>Giờ làm</h2>
+      <label for="month">Tháng</label>
+      <input id="month" type="month">
+      <div id="sheetMsg" class="msg" role="alert"></div>
+      <ul id="sheetSummary"></ul>
+      <h2 style="margin-top:16px">Chi tiết</h2>
+      <ul id="sheetList"></ul>
+    </div>
+
+    <!-- Admin và quản lý -->
+    <div id="qrCard" class="card" hidden>
+      <h2>Mã QR của quán</h2>
+      <p class="muted">Mở mã này trên một màn hình tại quán. Mã tự đổi mỗi 30 giây.</p>
+      <button id="qrToggle" type="button">Hiện mã QR</button>
+      <div id="qrWrap" hidden>
+        <div id="qrBox"></div>
+        <div id="qrCount" class="muted count"></div>
+      </div>
+      <div id="qrMsg" class="msg" role="alert"></div>
+    </div>
+
+    <div id="locCard" class="card" hidden>
+      <h2>Vị trí quán</h2>
+      <p id="locInfo" class="muted">Đang tải...</p>
+      <label for="radius">Bán kính cho phép (mét)</label>
+      <input id="radius" type="number" min="20" max="2000" value="100">
+      <button id="setLocBtn" type="button">Đặt vị trí quán là chỗ tôi đang đứng</button>
+      <div id="locMsg" class="msg" role="alert"></div>
+    </div>
+
+    <!-- Chỉ admin thấy -->
+    <div id="adminBox" hidden>
+      <form id="createForm" class="card" autocomplete="off">
+        <h2>Thêm tài khoản</h2>
+        <label for="newName">Họ và tên</label>
+        <input id="newName" type="text" required>
+        <label for="newUser">Tên đăng nhập (hoặc email)</label>
+        <input id="newUser" type="text" autocapitalize="none" required>
+        <label for="newPass">Mật khẩu (tối thiểu 6 ký tự)</label>
+        <input id="newPass" type="text" minlength="6" autocapitalize="none" required>
+        <label for="newRole">Cấp bậc</label>
+        <select id="newRole">
+          <option value="staff">Nhân viên</option>
+          <option value="manager">Quản lý</option>
+        </select>
+        <button id="createBtn" type="submit">Tạo tài khoản</button>
+        <div id="createMsg" class="msg" role="alert"></div>
+      </form>
+    </div>
+
+    <div id="listBox" class="card" hidden>
+      <h2>Danh sách tài khoản</h2>
+      <ul id="userList"></ul>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+  const SUPABASE_URL = "https://psodcrydlqbntscdrxrv.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_FEbYAWEcGUywEbhJ-2YeVg_tZYwriAc";
+  const FUNCTION_NAME = "hyper-service";
+  const DOMAIN = "@nv.app";
+  const VN = "Asia/Ho_Chi_Minh";
+  const FORGOT_MS = 16 * 3600 * 1000; // ca mở quá 16 giờ coi như quên ra ca
+  const ROLE_NAME = { admin: "Admin", manager: "Quản lý", staff: "Nhân viên" };
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const $ = (id) => document.getElementById(id);
+  const toEmail = (v) => { v = v.trim().toLowerCase(); return v.includes("@") ? v : v + DOMAIN; };
+  const say = (el, text, kind) => { el.textContent = text; el.className = "msg " + (kind || ""); };
+
+  let me = null;      // { id, full_name, role }
+  let isBoss = false; // admin hoặc quản lý
+
+  // ---------- Tiện ích ----------
+  const fmtTime = (d) => new Date(d).toLocaleTimeString("vi-VN", { timeZone: VN, hour: "2-digit", minute: "2-digit" });
+  const fmtDate = (d) => new Date(d).toLocaleDateString("vi-VN", { timeZone: VN, day: "2-digit", month: "2-digit" });
+  const dayKey = (d) => new Date(d).toLocaleDateString("en-CA", { timeZone: VN });
+  const hoursText = (ms) => { const m = Math.round(ms / 60000); return Math.floor(m / 60) + "g " + String(m % 60).padStart(2, "0") + "p"; };
+
+  function monthRange(ym) {
+    const [y, m] = ym.split("-").map(Number);
+    const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
+    const p = (n) => String(n).padStart(2, "0");
+    return [y + "-" + p(m) + "-01T00:00:00+07:00", ny + "-" + p(nm) + "-01T00:00:00+07:00"];
+  }
+
+  function row(left, right) {
+    const li = document.createElement("li");
+    const a = document.createElement("span"); a.textContent = left;
+    const b = document.createElement("span"); b.className = "r"; b.textContent = right;
+    li.append(a, b); return li;
+  }
+
+  async function callFn(body) {
+    const { data, error } = await sb.functions.invoke(FUNCTION_NAME, { body });
+    if (error) {
+      let msg = "Có lỗi xảy ra.";
+      try { const j = await error.context.json(); if (j.error) msg = j.error; } catch (_) {}
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  const getPos = () => new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error("Thiết bị không hỗ trợ định vị."));
+    navigator.geolocation.getCurrentPosition(res, (e) => rej(new Error(
+      e.code === 1 ? "Bạn cần cho phép truy cập vị trí cho trình duyệt." : "Không lấy được vị trí. Hãy bật GPS rồi thử lại."
+    )), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  });
+
+  // ---------- Đăng nhập / trang chính ----------
+  async function showHome(session) {
+    const { data, error } = await sb.from("profiles").select("full_name, role").eq("id", session.user.id).single();
+    if (error || !data) {
+      await sb.auth.signOut();
+      $("loginView").hidden = false; $("homeView").hidden = true;
+      say($("loginMsg"), "Tài khoản chưa được cấp quyền. Hãy liên hệ admin.", "err");
+      return;
+    }
+    me = { id: session.user.id, full_name: data.full_name, role: data.role };
+    isBoss = me.role === "admin" || me.role === "manager";
+    $("hello").textContent = "Xin chào, " + me.full_name;
+    $("roleTag").textContent = ROLE_NAME[me.role] || me.role;
+    $("adminBox").hidden = me.role !== "admin";
+    $("listBox").hidden = !isBoss;
+    $("qrCard").hidden = !isBoss;
+    $("locCard").hidden = !isBoss;
+    $("loginView").hidden = true; $("homeView").hidden = false;
+
+    if (!$("month").value) $("month").value = dayKey(new Date()).slice(0, 7);
+    loadToday(); loadSheet();
+    if (isBoss) { loadUsers(); loadLoc(); }
+  }
+
+  async function loadUsers() {
+    const { data, error } = await sb.from("profiles").select("full_name, role").order("created_at", { ascending: true });
+    const ul = $("userList"); ul.replaceChildren();
+    if (error) { ul.append(row("Không tải được danh sách.", "")); return; }
+    for (const p of data) ul.append(row(p.full_name, ROLE_NAME[p.role] || p.role));
+  }
+
+  $("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("loginBtn").disabled = true; say($("loginMsg"), "Đang đăng nhập...");
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: toEmail($("loginUser").value), password: $("loginPass").value
+    });
+    $("loginBtn").disabled = false;
+    if (error) return say($("loginMsg"), "Sai tên đăng nhập hoặc mật khẩu.", "err");
+    say($("loginMsg"), ""); $("loginPass").value = "";
+    showHome(data.session);
+  });
+
+  $("logoutBtn").addEventListener("click", async () => {
+    await stopScan(); stopQr();
+    await sb.auth.signOut();
+    me = null; $("homeView").hidden = true; $("loginView").hidden = false;
+  });
+
+  // ---------- Tạo tài khoản (admin) ----------
+  $("createForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("createBtn").disabled = true; say($("createMsg"), "Đang tạo...");
+    const body = {
+      action: "create_user",
+      full_name: $("newName").value.trim(),
+      email: toEmail($("newUser").value),
+      password: $("newPass").value,
+      role: $("newRole").value
+    };
+    try {
+      await callFn(body);
+      say($("createMsg"), "Đã tạo tài khoản cho " + body.full_name + ".", "ok");
+      $("createForm").reset(); loadUsers();
+    } catch (err) { say($("createMsg"), err.message, "err"); }
+    $("createBtn").disabled = false;
+  });
+
+  // ---------- Chấm công ----------
+  async function loadToday() {
+    const { data } = await sb.from("attendance").select("check_in, check_out")
+      .eq("user_id", me.id).order("check_in", { ascending: false }).limit(1);
+    const last = data && data[0];
+    let text = "Hôm nay chưa chấm công.";
+    if (last) {
+      const age = Date.now() - new Date(last.check_in).getTime();
+      if (!last.check_out && age < FORGOT_MS) text = "Đang trong ca từ " + fmtTime(last.check_in) + ".";
+      else if (last.check_out && dayKey(last.check_out) === dayKey(new Date()))
+        text = "Đã ra ca lúc " + fmtTime(last.check_out) + " (" + hoursText(new Date(last.check_out) - new Date(last.check_in)) + ").";
+    }
+    $("todayStatus").textContent = text;
+  }
+
+  let scanner = null, busy = false;
+
+  async function stopScan() {
+    try { if (scanner) { await scanner.stop(); scanner.clear(); } } catch (_) {}
+    scanner = null; $("scanArea").hidden = true; $("scanBtn").hidden = false;
+  }
+
+  async function startScan() {
+    say($("punchMsg"), "");
+    $("scanBtn").hidden = true; $("scanArea").hidden = false;
+    if (navigator.geolocation) navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 8000 });
+    scanner = new Html5Qrcode("reader");
+    try {
+      await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 240, height: 240 } }, onScan, () => {});
+    } catch (_) {
+      await stopScan();
+      say($("punchMsg"), "Không mở được camera. Hãy cho phép camera cho trình duyệt.", "err");
+    }
+  }
+
+  async function onScan(text) {
+    if (busy) return; busy = true;
+    await stopScan();
+    try {
+      say($("punchMsg"), "Đang lấy vị trí...");
+      const pos = await getPos();
+      say($("punchMsg"), "Đang chấm công...");
+      const r = await callFn({ action: "punch", qr: text, lat: pos.coords.latitude, lng: pos.coords.longitude });
+      say($("punchMsg"), r.type === "in" ? "Đã vào ca lúc " + fmtTime(r.time) + "." : "Đã ra ca lúc " + fmtTime(r.time) + ".", "ok");
+      loadToday(); loadSheet();
+    } catch (err) { say($("punchMsg"), err.message, "err"); }
+    busy = false;
+  }
+
+  $("scanBtn").addEventListener("click", startScan);
+  $("cancelScan").addEventListener("click", stopScan);
+
+  // ---------- Bảng giờ làm ----------
+  async function loadSheet() {
+    say($("sheetMsg"), "");
+    const [from, to] = monthRange($("month").value);
+    const { data, error } = await sb.from("attendance")
+      .select("user_id, check_in, check_out, profiles(full_name)")
+      .gte("check_in", from).lt("check_in", to).order("check_in", { ascending: false });
+    const sum = $("sheetSummary"), list = $("sheetList");
+    sum.replaceChildren(); list.replaceChildren();
+    if (error) return say($("sheetMsg"), "Không tải được bảng giờ làm.", "err");
+    if (!data.length) { list.append(row("Chưa có dữ liệu tháng này.", "")); return; }
+
+    const per = {};
+    for (const r of data) {
+      const name = (r.profiles && r.profiles.full_name) || "Nhân viên";
+      const p = per[r.user_id] || (per[r.user_id] = { name, ms: 0, days: new Set() });
+      p.days.add(dayKey(r.check_in));
+      if (r.check_out) p.ms += new Date(r.check_out) - new Date(r.check_in);
+
+      let right;
+      if (r.check_out) right = fmtTime(r.check_in) + " – " + fmtTime(r.check_out) + " (" + hoursText(new Date(r.check_out) - new Date(r.check_in)) + ")";
+      else if (Date.now() - new Date(r.check_in).getTime() < FORGOT_MS) right = fmtTime(r.check_in) + " – đang làm";
+      else right = fmtTime(r.check_in) + " – quên ra ca";
+      list.append(row((isBoss ? name + " · " : "") + fmtDate(r.check_in), right));
+    }
+    Object.values(per).sort((a, b) => a.name.localeCompare(b.name, "vi")).forEach((p) =>
+      sum.append(row(p.name, hoursText(p.ms) + " · " + p.days.size + " ngày")));
+  }
+  $("month").addEventListener("change", loadSheet);
+
+  // ---------- Mã QR (admin / quản lý) ----------
+  let qrTimer = null, qrCd = 0, qrBusy = false;
+  async function refreshQr() {
+    if (qrBusy) return; qrBusy = true; qrCd = 30;
+    try {
+      const r = await callFn({ action: "qr_token" });
+      const q = qrcode(0, "M"); q.addData(r.token); q.make();
+      $("qrBox").innerHTML = q.createSvgTag(6, 0);
+      say($("qrMsg"), "");
+    } catch (err) { say($("qrMsg"), err.message, "err"); }
+    qrBusy = false;
+  }
+  function stopQr() {
+    clearInterval(qrTimer); qrTimer = null;
+    $("qrWrap").hidden = true; $("qrToggle").textContent = "Hiện mã QR";
+  }
+  $("qrToggle").addEventListener("click", () => {
+    if (!$("qrWrap").hidden) return stopQr();
+    $("qrWrap").hidden = false; $("qrToggle").textContent = "Ẩn mã QR";
+    refreshQr();
+    qrTimer = setInterval(() => {
+      qrCd--; $("qrCount").textContent = "Đổi mã sau " + Math.max(qrCd, 0) + " giây";
+      if (qrCd <= 0) refreshQr();
+    }, 1000);
+  });
+
+  // ---------- Vị trí quán ----------
+  async function loadLoc() {
+    const { data } = await sb.from("settings").select("radius_m").eq("id", 1).maybeSingle();
+    if (data) { $("locInfo").textContent = "Đã đặt vị trí quán. Bán kính cho phép: " + data.radius_m + " m."; $("radius").value = data.radius_m; }
+    else $("locInfo").textContent = "Chưa đặt vị trí quán. Nhân viên chưa thể chấm công.";
+  }
+  $("setLocBtn").addEventListener("click", async () => {
+    $("setLocBtn").disabled = true; say($("locMsg"), "Đang lấy vị trí...");
+    try {
+      const pos = await getPos();
+      await callFn({ action: "set_location", lat: pos.coords.latitude, lng: pos.coords.longitude,
+        radius_m: Number($("radius").value) || 100 });
+      say($("locMsg"), "Đã lưu vị trí quán (độ chính xác khoảng " + Math.round(pos.coords.accuracy) + " m).", "ok");
+      loadLoc();
+    } catch (err) { say($("locMsg"), err.message, "err"); }
+    $("setLocBtn").disabled = false;
+  });
+
+  // ---------- Khởi động ----------
+  (async () => {
+    const { data } = await sb.auth.getSession();
+    if (data.session) showHome(data.session); else $("loginView").hidden = false;
+  })();
+</script>
+</body>
+</html>
